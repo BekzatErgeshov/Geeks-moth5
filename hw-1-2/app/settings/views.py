@@ -17,8 +17,24 @@ class CategoryAPIView(ListAPIView):
 
 class ProductListAPIView(ListAPIView):
     queryset = Product.objects.prefetch_related(
-        "product_images"
+        "product_image"
         ).select_related("category")
+    serializer_class = ProductSerializer
+
+class ProductCreateAPIView(CreateAPIView):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+
+class ProductRetrieveAPIView(RetrieveAPIView):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+
+class ProductUpdateAPIView(UpdateAPIView):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+
+class ProductDestroyAPIView(DestroyAPIView):
+    queryset = Product.objects.all()
     serializer_class = ProductSerializer
 
 
