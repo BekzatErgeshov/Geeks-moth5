@@ -22,6 +22,8 @@ class ProductSerializer(serializers.ModelSerializer):
         many=True,
         read_only=True
     )
+    
+    category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all())
 
     class Meta:
         model = Product
@@ -46,3 +48,24 @@ class CalculatorSerializer(serializers.Serializer):
 
 class TemperatureSerializer(serializers.Serializer):
     temperature = serializers.FloatField(min_value=-10, max_value=40)
+
+def validate_name(self, value):
+    if len(value) < 3:
+        raise serializers.ValidationError("еазвание должно быть не менее 3 символов.")
+    return value
+
+def validate_price(self, value):
+    if value <= 0:
+        raise serializers.ValidationError("цена должна быть больше нуля.")
+    return value
+
+def validate(self, value):
+    name = value.get("name")
+    description = value.get("description")
+
+    if name and description:
+        if name.lower() in description.lower():
+            raise serializers.ValidationError(
+                "Описание не должно содержать название продукта."
+            )
+    return value

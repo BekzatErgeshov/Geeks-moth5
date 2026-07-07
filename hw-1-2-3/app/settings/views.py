@@ -2,6 +2,9 @@ from rest_framework.generics import ListAPIView, CreateAPIView,\
 RetrieveAPIView, UpdateAPIView, DestroyAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
+from django.core.cache import cache
 
 from app.settings.models import Category, Product
 from app.settings.serializers import (
@@ -11,20 +14,36 @@ from app.settings.serializers import (
     TemperatureSerializer,
 )
 
+CATEGORY_LIST_CACHE_KEY = 'category_list'
+CATEGORY_LIST_CACHE_TTL = 60 * 15  # 15 минут
+
 class CategoryAPIView(ListAPIView):
     queryset = Category.objects.all()
     serializer_class = CategorySerializers
+
+    def list(self, request, *args, **kwargs):
+        cached_data = cache.get(CATEGORY_LIST_CACHE_KEY)
+        if cached_data is not None:
+            return Response(cached_data)
+
+        response = super().list(request, *args, **kwargs)
+        cache.set(CATEGORY_LIST_CACHE_KEY, response.data, CATEGORY_LIST_CACHE_TTL)
+        return response
 
 class ProductListAPIView(ListAPIView):
     queryset = Product.objects.prefetch_related(
         "product_image"
         ).select_related("category")
     serializer_class = ProductSerializer
+    @method_decorator(cache_page(60 * 5))  # Cache for 15 minutes
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
 
 class ProductCreateAPIView(CreateAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
-
+    
+@method_decorator(cache_page(60 * 5), name='get')  # Cache for 15 minutes
 class ProductRetrieveAPIView(RetrieveAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
@@ -36,7 +55,10 @@ class ProductUpdateAPIView(UpdateAPIView):
 class ProductDestroyAPIView(DestroyAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
-
+    
+    def perform_destroy(self, instance):
+        instance.delete()
+        cache.clear()
 
 class CalculatorAPIView(APIView):
     def post(self, request):
